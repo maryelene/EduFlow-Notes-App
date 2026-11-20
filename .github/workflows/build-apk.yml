@@ -43,9 +43,21 @@ jobs:
           gradle-version: '9.3.1'
           cache-provider: basic
 
-      - name: Prepare environment and debug keystore
+      - name: Prepare environment, Firebase config, and debug keystore
         working-directory: ${{ steps.locate.outputs.project_dir }}
+        env:
+          GOOGLE_SERVICES_JSON: ${{ secrets.GOOGLE_SERVICES_JSON }}
         run: |
+          if [ ! -f app/google-services.json ]; then
+            if [ -n "$GOOGLE_SERVICES_JSON" ]; then
+              mkdir -p app
+              printf '%s' "$GOOGLE_SERVICES_JSON" > app/google-services.json
+            else
+              echo "::error::Missing app/google-services.json! Add google-services.json inside the app/ folder or set the GOOGLE_SERVICES_JSON repository secret."
+              exit 1
+            fi
+          fi
+
           if [ ! -f .env ]; then
             if [ -f .env.example ]; then
               cp .env.example .env
@@ -107,3 +119,8 @@ jobs:
       - name: Upload Release APK (If Built)
         if: ${{ hashFiles(format('{0}/app/build/outputs/apk/release/app-release.apk', steps.locate.outputs.project_dir)) != '' }}
         uses: actions/upload-artifact@v7
+        with:
+          name: EduFlow-Notes-release.apk
+          path: ${{ steps.locate.outputs.project_dir }}/app/build/outputs/apk/release/app-release.apk
+          archive: false
+          if-no-files-found: error
